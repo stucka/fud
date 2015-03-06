@@ -1,13 +1,14 @@
 #!/home/mstucka/bin/python
-import glob
-import csv
 import MySQLdb
 import datetime
 import urllib
 import sys
-import zipfile
 import os
 import creds
+# Requests?
+#import glob
+#import zipfile
+#import csv
 
 ## Note "import creds" refers to MySQL credentials to be entered in creds.py
 ## chmod creds.py 700 for more security on Unix machines.
@@ -29,6 +30,8 @@ import creds
 
 ## Fudvio: Restaurant ID, inspection ID, violation number, violation 
 ## description, occurence count. One record per violation.
+
+initialcountylist=["Bibb", "Houston", "Peach"]
 
 hostdir=creds.access['hostdir']
 dbhost=creds.access['dbhost']
@@ -67,32 +70,20 @@ def RestartDatabaseFromScratch():
 #        print "Error occurred: %s " % e.args[0]
 #        print e
 #        
-
-    db.execute("""create table voterhist (CountyCode varchar(3),
-        RegistrationNumber varchar(8), ElectionDate date,
-        ElectionType varchar(3), Party varchar(1),
-        Absentee varchar(1), ElectionYear int);""")
-
-    db.execute("""alter table voterhist add index(RegistrationNumber);""")
-
-    prestring = []
-    prestring.append("alter table voterhist partition by range(ElectionYear) (")
-    for i in MyYears:
-        newyear = i + 1
-        prestring.append('partition p' + str(i) + ' values less than (' +
-            str(newyear) + '), ')
-
-    for i in range((datetime.datetime.today().year + 1), (datetime.datetime.today().year + 11)):
-        newyear = i + 1
-        prestring.append('partition p' + str(i) + ' values less than (' +
-            str(newyear) + '), ')
-
-    prestring.append("partition pmax values less than (2345));")
-    fullstring = ''.join(prestring)
-    fullstring = ''.join(prestring)
-    print "Trying to execute a really big SQL command: " + fullstring;
-#    db.execute("%s", [fullstring])
-    db.execute(fullstring)
+    db.execute("""drop table if exists fudmeta;""")
+    db.execute("""create table fudmeta (County varchar(50), lastcheck date default "2010-01-01" );""")
+    db.execute("""drop table if exists fudplace;""")
+    db.execute("""create table fudplace (placeid varchar(20), rawplace varchar(50), rawaddress varchar(100), cleanplace varchar(50), cleanaddress varchar(100));""")
+    db.execute("""drop table if exists fudscore;""")
+    db.execute("""create table fudscore (placeid varchar(20), inspid varchar(20), inspdate date, inspscore int, inspgrade varchar(1), viotypes int, viocount int);""")
+    db.execute("""drop table if exists fudvio;""")
+    db.execute("""create table fudvio (placeid varchar(20), inspid varchar(20), vioid varchar(5), viodesc varchar(50), viocount int);""")
+    print "Tables created."
+    
+    for county in initialcountylist:
+        fullstring='insert into fudmeta values ("' + county + '")'
+        print "    Adding " + county + " to the search."
+        db.execute(fullstring)
 
     return
 
